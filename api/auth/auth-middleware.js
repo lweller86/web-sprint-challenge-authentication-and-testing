@@ -1,6 +1,6 @@
 const db = require('../../data/dbConfig')
 
-function validateUser(req, res, next) {
+function validateUser (req, res, next) {
   const {username, password} = req.body
   if(!username || !password){
     res.status(400).json({message: "username and password required"})
@@ -26,5 +26,4 @@ async function checkUserExists(req, res, next) {
 module.exports = {
 validateUser,
 checkUserExists,
-
 };
