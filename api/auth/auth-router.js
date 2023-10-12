@@ -1,36 +1,81 @@
 const router = require('express').Router();
+const bcrypt = require('bcryptjs')
+const User = require('../auth/auth-middleware')
+const db = require("../../data/dbConfig");
+const jwt = require("jsonwebtoken");
+const { JWT_SECRET } = require("../../config/index");
 
-router.post('/register', (req, res) => {
-  res.end('implement register, please!');
-  /*
-    IMPLEMENT
-    You are welcome to build additional middlewares to help with the endpoint's functionality.
-    DO NOT EXCEED 2^8 ROUNDS OF HASHING!
 
-    1- In order to register a new account the client must provide `username` and `password`:
-      {
-        "username": "Captain Marvel", // must not exist already in the `users` table
-        "password": "foobar"          // needs to be hashed before it's saved
+router.post('/register',
+  User.validateUser,
+  User.checkUserExists,
+  async (req, res, next) => {
+    try {
+      const {
+        username,
+        password,
+      } = req.body
+
+      const newUser = {
+        username,
+        password:
+          bcrypt.hashSync(password, 8),
       }
 
-    2- On SUCCESSFUL registration,
-      the response body should have `id`, `username` and `password`:
-      {
-        "id": 1,
-        "username": "Captain Marvel",
-        "password": "2a$08$jG.wIGR2S4hxuyWNcBf9MuoC4y0dNy7qC/LbmtuFBSdIhWks2LhpG"
+      const id = await db("users").insert(newUser)
+
+      const [res] = await db("user").where("id", id)
+      res.status(201).json(res)
+
+    } catch (err) {
+      next(err)
+    }
+
+    /*
+      IMPLEMENT
+      You are welcome to build additional middlewares to help with the endpoint's functionality.
+      DO NOT EXCEED 2^8 ROUNDS OF HASHING!
+  
+      1- In order to register a new account the client must provide `username` and `password`:
+        {
+          "username": "Captain Marvel", // must not exist already in the `users` table
+          "password": "foobar"          // needs to be hashed before it's saved
+        }
+  
+      2- On SUCCESSFUL registration,
+        the response body should have `id`, `username` and `password`:
+        {
+          "id": 1,
+          "username": "Captain Marvel",
+          "password": "2a$08$jG.wIGR2S4hxuyWNcBf9MuoC4y0dNy7qC/LbmtuFBSdIhWks2LhpG"
+        }
+  
+      3- On FAILED registration due to `username` or `password` missing from the request body,
+        the response body should include a string exactly as follows: "username and password required".
+  
+      4- On FAILED registration due to the `username` being taken,
+        the response body should include a string exactly as follows: "username taken".
+    */
+  });
+
+router.post('/login', User.validateUser, (req, res, next) => {
+  const { username, password } = req.body;
+  try {
+    db("users")
+    .where("username", username)
+    .first()
+    .then((user) => 
+    {
+      if (user && bcrypt.compareSync(password, user.password)) {
+        const token = buildToken(user)
+        res.status(200).json({ message: `Welcome ${user.username}`, token })
+      } else {
+        res.status(401).json({ message: "Invalid credentials" })
       }
-
-    3- On FAILED registration due to `username` or `password` missing from the request body,
-      the response body should include a string exactly as follows: "username and password required".
-
-    4- On FAILED registration due to the `username` being taken,
-      the response body should include a string exactly as follows: "username taken".
-  */
-});
-
-router.post('/login', (req, res) => {
-  res.end('implement login, please!');
+    })
+  } catch(err) {
+    next(err)
+  }
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -55,5 +100,17 @@ router.post('/login', (req, res) => {
       the response body should include a string exactly as follows: "invalid credentials".
   */
 });
+
+function buildToken(user) {
+  const payload = {
+    subject: user.id,
+    username: user.username,
+  }
+
+  const options={
+    expiresIn: '1d',
+  }
+  return jwt.sign(payload, JWT_SECRET, options)
+}
 
 module.exports = router;
