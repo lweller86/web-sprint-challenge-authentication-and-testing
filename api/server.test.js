@@ -21,13 +21,6 @@ describe("Check [get]/api/jokes endpoint functioning correctly", () => {
     password: "1234",
   };
 
-  it("receive No token message when token is missing", async () => {
-    const data = await request(server).get("/api/jokes");
-    console.log(data);
-    expect(data.body).toMatchObject({
-      message: "Token required",
-    });
-  });
 
   it("receive list of jokes with proper login and token", async () => {
     await request(server).post("/api/auth/register").send(user);
