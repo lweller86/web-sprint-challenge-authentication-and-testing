@@ -33,7 +33,7 @@ router.post("/login", validateUser, async (req, res, next) => {
   } else {
     const user = await db("users").where({ username }).first();
     if (!user) {
-      return res.status(400).json({ message: "invalid credentials" });
+      return res.status(400).json({ message: "Invalid credentials" });
     } else {
       if (bcrypt.compareSync(password, user.password)) {
         const token = jwt.sign(
@@ -41,9 +41,9 @@ router.post("/login", validateUser, async (req, res, next) => {
           process.env.JWT_SECRET || "shh",
           { expiresIn: "7d" }
         );
-        return res.status(200).json({ message: "welcome, " + username, token });
+        return res.status(200).json({ message: "welcome " + username, token });
       } else {
-        return res.status(400).json({ message: "invalid credentials" });
+        return res.status(400).json({ message: "Invalid credentials" });
       }
     }
   }
