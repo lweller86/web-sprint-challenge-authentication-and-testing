@@ -4,6 +4,7 @@ const User = require("../users/users-model")
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../../config/index");
 const { validateUser, userNameAvailable } = require("./auth-middleware");
+const db = require("../../data/dbConfig")
 
 router.post("/register",
   validateUser,
@@ -26,13 +27,25 @@ router.post("/register",
 );
 
 router.post("/login", validateUser, async (req, res, next) => {
-  const { username } = req.body;
-  const [ user ] = await User.getBy({ username })
-  if (bcrypt.compareSync(req.body.password, user.password)) {
-    const token = buildToken(user);
-    res.status(200).json({ message: `welcome ${username}`, token });
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ message: "username and password required" });
   } else {
-    res.status(401).json({ message: "Invalid credentials" });
+    const user = await db("users").where({ username }).first();
+    if (!user) {
+      return res.status(400).json({ message: "invalid credentials" });
+    } else {
+      if (bcrypt.compareSync(password, user.password)) {
+        const token = jwt.sign(
+          { username },
+          process.env.JWT_SECRET || "shh",
+          { expiresIn: "7d" }
+        );
+        return res.status(200).json({ message: "welcome, " + username, token });
+      } else {
+        return res.status(400).json({ message: "invalid credentials" });
+      }
+    }
   }
 });
 
